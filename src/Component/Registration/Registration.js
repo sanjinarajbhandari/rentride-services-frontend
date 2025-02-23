@@ -12,12 +12,43 @@ function Registration() {
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const userData = {
+      name: name,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+    };
+
+    try {
+      const response = await fetch("http://localhost:8081/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+
+      const data = await response.json();
+      toast.success("Registration Successful", {
+        position: "top-right",
+      });
+      setMessage(data.message);
+      if (response.ok) navigate("/");
+    } catch (error) {
+      toast.error("Registration error", {
+        position: "top-right",
+      });
+      console.error(error);
+    }
+  }
+
   return (
     <div className="main-wrapper">
       <div className="wrapper">
         <h1 className="font-semibold">Create Account</h1>
         <h2 className="text-yellow-500">{message}</h2>
-        <form>
+        <form onSubmit={handleSubmit}>
           <div className=" input-box">
             <input
               placeholder=" Name"
@@ -74,9 +105,7 @@ function Registration() {
             <FaLock className="icon" />
           </div>
 
-          <button className="change" type="submit">
-            Create Account
-          </button>
+          <button className="change" type="submit">Create Account</button>
 
           <div className="register-link">
             <p>
