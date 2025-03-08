@@ -1,26 +1,118 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { app } from "../../firebase";
+import { useDispatch, useSelector } from "react-redux";
+import Khalti from "../Khalti/Khalti";
+import { paymentReset } from "../../redux/user/paymentSlice";
 import { useNavigate } from "react-router-dom";
+import {
+  reservationStart,
+  reservationReset,
+  reservationSuccess,
+} from "../../redux/user/reservationSlice";
 
-const Booking = ({ price, model, onClose }) => {
+export default function Booking({ price, model, onClose, id }) {
+  const { user, loading, error } = useSelector((state) => state.user);
+  console.log(user, "vlaue");
+  const { reservationStatus } = useSelector((state) => state.reservation);
+  const { paymentStatus } = useSelector((state) => state.payment);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const [userName, setUserName] = useState("");
   const [contact, setContact] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState("");
   const [showPopup, setShowPopup] = useState(true);
   const [khalti, setKhalti] = useState(false);
-
-  const navigate = useNavigate()
+  const storage = getStorage(app);
 
   const handleKhalti = (e) => {
     e.preventDefault();
+    console.log("hoooooooooooooooo");
+    const storageRef = ref(storage, `reservationImage/${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress =
+          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        console.log(`Upload is ${progress}% done`);
+      },
+      (error) => {
+        console.log("Error uploading image :", error);
+      },
+
+      async () => {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        console.log(downloadURL);
+        const userData = {
+          email: user?.rest.email,
+          userName,
+          contact,
+          checkOutDate,
+          price,
+          description,
+          model,
+          image: downloadURL,
+          vehicleId: id,
+        };
+        console.log(userData);
+        dispatch(reservationStart());
+        dispatch(reservationSuccess(userData));
+        console.log(reservationStatus, "rese");
+      }
+    );
+    console.log("dhelllooohh");
+
     setKhalti(true);
+  };
+
+  useEffect(() => {
+    if (paymentStatus === "success") {
+      handleConfirmBooking();
+    }
+  }, [paymentStatus]);
+
+  const handleConfirmBooking = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/createBooking", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reservationStatus),
+      });
+      dispatch(reservationReset());
+      dispatch(paymentReset());
+      setTimeout(function () {
+        navigate("/Vehicle");
+      }, 3000);
+
+      // Reset all states after successful form submission
+      setUserName("");
+      setContact("");
+      setCheckOutDate("");
+      setDescription("");
+      setFile("");
+      setShowPopup(false);
+
+      onClose();
+    } catch (error) {
+      console.error("Error adding vechicle Booking", error);
+    }
   };
 
   function handleClose() {
     setShowPopup(false);
-    navigate('/vehicle')
-    
+    onClose();
   }
 
   return (
@@ -64,6 +156,8 @@ const Booking = ({ price, model, onClose }) => {
                 <input
                   type="date"
                   className="border p-3 rounded-lg "
+                  // min={new Date().toISOString().split("T")[0]}
+                  maxLength="3"
                   value={checkOutDate}
                   onChange={(e) => setCheckOutDate(e.target.value)}
                   required
@@ -99,9 +193,7 @@ const Booking = ({ price, model, onClose }) => {
         </div>
       )}
 
-      {khalti && <p className="text-center text-lg font-semibold">Khalti Payment Simulated</p>}
+      {khalti && <Khalti amounto={price} purpose={"vehicle"} />}
     </>
   );
-};
-
-export default Booking;
+}
