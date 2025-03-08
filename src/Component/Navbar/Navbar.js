@@ -1,16 +1,42 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { HashLink as Link } from "react-router-hash-link";
+import Profile from "../profile/profile";
 import { FaUser } from "react-icons/fa";
-import "./Navbar.css";
+import { Badge } from "antd";
+import { searchStart, searchSuccess } from "../../redux/user/searchSlice";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useSelector((state) => state.user);
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+  const dispatch = useDispatch();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
+  const { searchStatus } = useSelector((state) => state.search);
 
+  const handleSearchChange = (e) => {
+    e.preventDefault();
+    setSearchTerm(e.target.value);
+  };
+
+  useEffect(() => {
+    dispatch(searchStart());
+    dispatch(searchSuccess(searchTerm));
+  }, [searchTerm]);
+
+  const handleSubmit = () => {
+    if (searchStatus === "") {
+      console.log("nul");
+    } else {
+      console.log("not nul");
+      navigate("/search");
+    }
+  };
   return (
     <>
       <nav className="NavbarItem">
@@ -31,12 +57,19 @@ const Navbar = () => {
             </Link>
           </li>
           <li>
-            <form className="bg-slate-100 p-1.5 border-2 border-grey rounded-3xl flex ml-5 items-center">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit();
+              }}
+              className="bg-slate-100 p-1.5 border-2 border-grey rounded-3xl flex ml-5 items-center"
+            >
               <input
                 type="text"
                 placeholder="Search..."
                 className="bg-transparent focus:outline-none w-20 sm:w-40"
                 value={searchTerm}
+                onChange={handleSearchChange}
               ></input>
               <button>
                 <i className="fa-solid fa-magnifying-glass"></i>
@@ -46,9 +79,15 @@ const Navbar = () => {
         </ul>
 
         <div className="corner-menu">
-          <Link to="/profile">
-            <FaUser />
-          </Link>
+          {user ? (
+            <Link to="/profile">
+              <FaUser />
+            </Link>
+          ) : (
+            <Link to="/Registration">
+              <FaUser />
+            </Link>
+          )}
         </div>
       </nav>
     </>
