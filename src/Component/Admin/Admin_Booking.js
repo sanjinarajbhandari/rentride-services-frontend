@@ -1,30 +1,33 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AdminNav from "./AdminNav";
-
-const staticBookings = [
-  {
-    checkOutDate: "2025-03-15",
-    contact: "1234567890",
-    description: "Luxury SUV for a road trip.",
-    email: "user1@example.com",
-    model: "Model X",
-    price: "$5000",
-    userName: "JohnDoe",
-    vehicleId: "V001",
-  },
-  {
-    checkOutDate: "2025-04-10",
-    contact: "9876543210",
-    description: "Compact sedan for city travel.",
-    email: "user2@example.com",
-    model: "Model Y",
-    price: "$4000",
-    userName: "JaneDoe",
-    vehicleId: "V002",
-  },
-];
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 export default function Admin_Booking() {
+  const navigate = useNavigate();
+  const [vehicles, setVehicles] = useState([]);
+
+  async function fetchBookings() {
+    try {
+      const response = await fetch("http://localhost:8081/fetchBookingadmin", {
+        credentials: "include",
+      });
+      const responseData = await response.json();
+      console.log(responseData);
+      setVehicles(responseData.Bookings);
+    } catch (error) {
+      toast.error("You are not admin", {
+        position: "top-right",
+      });
+      navigate("/");
+      console.error(error);
+    }
+  }
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
   return (
     <>
       <AdminNav />
@@ -43,21 +46,29 @@ export default function Admin_Booking() {
           </tr>
         </thead>
         <tbody>
-          {staticBookings.map((vehicle, index) => (
-            <tr
-              className="shadow-lg text-center border-black border-1 rounded-xxl"
-              key={index}
-            >
-              <td>{vehicle.checkOutDate}</td>
-              <td>{vehicle.contact}</td>
-              <td>{vehicle.description}</td>
-              <td>{vehicle.email}</td>
-              <td>{vehicle.model}</td>
-              <td>{vehicle.price}</td>
-              <td>{vehicle.userName}</td>
-              <td>{vehicle.vehicleId}</td>
+          {vehicles.length > 0 ? (
+            vehicles.map((vehicle, index) => (
+              <tr
+                className="shadow-lg text-center border-black border-1 rounded-xxl"
+                key={index}
+              >
+                <td>{vehicle.checkOutDate}</td>
+                <td>{vehicle.contact}</td>
+                <td>{vehicle.description}</td>
+                <td>{vehicle.email}</td>
+                <td>{vehicle.model}</td>
+                <td>{vehicle.price}</td>
+                <td>{vehicle.userName}</td>
+                <td>{vehicle.vehicleId}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="7" className="text-center">
+                No bookings found.
+              </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </>
