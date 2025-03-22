@@ -5,6 +5,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import Home from "./Component/Home/Home";
+import Product from "./Component/Products/Product";
 import Registration from "./Component/Registration/Registration";
 import Login from "./Component/Login/Login";
 import Vehicle from "./Component/Vehicle/Vehcile";
@@ -22,6 +23,10 @@ import Success from "./Component/Khalti/KhaltiSuccess";
 import Admin_Booking from "./Component/Admin/Admin_Booking";
 import Footer from "./Component/Footer/Footer";
 import Search from "./Component/Search/Search";
+import AdminDashboard from "./Component/Admin/AdminDashboard";
+import AdminVendors from "./Component/Admin/AdminVendors";
+import VendorBooking from "./Component/Vendors/VendorBooking";
+import VendorVehicle from "./Component/Vendors/VendorVehicle";
 
 const App = () => {
   return (
@@ -30,6 +35,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/Registration" element={<Registration />} />
         <Route path="/" element={<Home />} />
+        <Route path="/product" element={<Product />} />
         <Route path="/Vehicle" element={<Vehicle />} />
         <Route path="/forgotP" element={<ForgotPassword />} />
         <Route path="/resetForm" element={<ResetForm />} />
@@ -45,11 +51,16 @@ const App = () => {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/AdminBooking" element={<Admin_Booking />} />
         <Route path="/AdminVehicle" element={<AdminVehicle />} />
+        <Route path="/AdminDashboard" element={<AdminDashboard />} />
+        <Route path="/AdminVendors" element={<AdminVendors />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/history" element={<History />} />
         <Route path="/changePassword" element={<ChangePassword />} />
         <Route path="/khaltiSuccess" element={<Success />} />
         <Route path="/Booking" element={<Booking />} />
+
+        <Route path="/VendorBooking" element={<VendorBooking />} />
+        <Route path="/VendorVehicle" element={<VendorVehicle />} />
         {/* </Route> */}
       </Routes>
       <ToastContainer />
