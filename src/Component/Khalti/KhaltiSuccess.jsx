@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   payementFailure,
   paymentStart,
   paymentSuccess,
 } from "../../redux/user/paymentSlice";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Success = () => {
+  const { user } = useSelector((state) => state.user);
+  console.log(user);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const searchParams = new URLSearchParams(window.location.search);
@@ -28,15 +32,11 @@ const Success = () => {
 
         if (responseData.status === "Completed") {
           dispatch(paymentSuccess());
-          alert("Thank You! Payment has been received.");
+          toast.success("Payment has been received.", {
+            position: "top-right",
+          });
           if (purpose === "vehicle") {
-            console.log("aana");
             navigate("/Booking");
-          } else if (purpose === "product") {
-            console.log("prodododooddo");
-            navigate("/cart");
-          } else {
-            console.log("buwa");
           }
         } else {
           dispatch(payementFailure());
@@ -50,7 +50,17 @@ const Success = () => {
     submitAlbum(); // Call the function once
   }, []);
 
-  return null; // This component doesn't render anything
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+      <ToastContainer position="top-right" autoClose={3000} />
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-center">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-gray-700">Processing your payment...</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Success;
