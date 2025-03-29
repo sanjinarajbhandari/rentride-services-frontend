@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from "react";
 import AdminNav from "./AdminNav";
-
 import { useNavigate } from "react-router-dom";
-import {
-  getStorage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
-import { app } from "../../firebase";
-import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
-
 import "./Admin_Vehicle.css";
+import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
 
 const AdminVehicle = () => {
-  const { user } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -25,93 +15,15 @@ const AdminVehicle = () => {
   const [fuel, setFuel] = useState("");
   const [description, setDescription] = useState("");
   const [file, setfile] = useState();
-  const [vehicle, setVehicle] = useState();
+  const [vehicle, setVehicle] = useState([]);
   const [updateButton, setUpdateButton] = useState(false);
   const [showButton, setshowButton] = useState(false);
   const [vehicleId, setVehicleId] = useState("");
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(null);
 
-  async function handleSubmit(e) {
-    try {
-      e.preventDefault();
-      let data = [];
-
-      const storage = getStorage(app);
-      const storageRef = ref(storage, `vehicleImage/${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
-        },
-        (error) => {
-          console.log("Error uploading image :", error);
-        },
-        async () => {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          const userData = {
-            brand: brand,
-            model: model,
-            power: power,
-            Fuel: fuel,
-            price: price,
-            type: type,
-            description: description,
-            image: downloadURL,
-          };
-
-          console.log("File available at:", userData);
-          if (vehicleId) {
-            const response = await fetch(
-              `http://localhost:8081/admin/vehicle/${vehicleId}`,
-              {
-                method: "PUT",
-                credentials: "include",
-
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(userData),
-              }
-            );
-            data = await response.json();
-          } else {
-            const response = await fetch(
-              "http://localhost:8081/createVehicle",
-              {
-                method: "POST",
-                credentials: "include",
-
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(userData),
-              }
-            );
-
-            data = await response.json();
-            toast.success("Vehicle has been added", {
-              position: "top-right",
-            });
-            window.location.reload();
-          }
-          console.log(data, "datas");
-          // Reset all states after successful form submission
-          setBrand("");
-          setModel("");
-          setPrice("");
-          setType("");
-          setPower("");
-          setFuel("");
-          setDescription("");
-          setfile(null);
-          setVehicleId("");
-          setUpdateButton(false);
-          setshowButton(false);
-        }
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const [currentPage, setCurrentPage] = useState(1);
+  const vehiclesPerPage = 6;
 
   async function fetchVehicle() {
     try {
@@ -121,11 +33,8 @@ const AdminVehicle = () => {
       const responseData = await response.json();
       setVehicle(responseData.vehicle);
     } catch (error) {
-      toast.error("You are not admin", {
-        position: "top-right",
-      });
+      toast.error("You are not admin", { position: "top-right" });
       navigate("/");
-
       console.error(error);
     }
   }
@@ -134,26 +43,164 @@ const AdminVehicle = () => {
     fetchVehicle();
   }, []);
 
-  //Delete a product
-  async function remove(id) {
-    try {
-      const response = await fetch(`http://localhost:8081/Vehicle/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+  // Fetch vehicle data to populate input fields if it's an update
+  useEffect(() => {
+    if (vehicleId) {
+      const selectedVehicle = vehicle.find((v) => v._id === vehicleId);
+      if (selectedVehicle) {
+        setBrand(selectedVehicle.brand);
+        setModel(selectedVehicle.model);
+        setPrice(selectedVehicle.price);
+        setType(selectedVehicle.type);
+        setPower(selectedVehicle.power);
+        setFuel(selectedVehicle.Fuel);
+        setDescription(selectedVehicle.description);
+      }
+    }
+  }, [vehicleId, vehicle]);
 
-      const data = await response.json();
-      console.log(data);
-      // Remove the deleted product from the productList state
-      setVehicle((prevVehicleList) =>
-        prevVehicleList.filter((vehicle) => vehicle._id !== id)
+  async function handleSubmit(e) {
+    try {
+      e.preventDefault();
+      let data = [];
+
+      if (!file && !vehicleId) {
+        toast.error("Please select an image.");
+        return;
+      }
+
+      let uploadedFilename = "";
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const uploadResponse = await fetch(
+          "http://localhost:8081/uploadVehicleImage",
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          }
+        );
+
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData.error || "Failed to upload image");
+        }
+
+        uploadedFilename = uploadData.data;
+      }
+
+      const vehicleData = {
+        brand,
+        model,
+        power,
+        Fuel: fuel,
+        price,
+        type,
+        description,
+        image: uploadedFilename,
+      };
+
+      let response;
+      if (vehicleId) {
+        if (vehicleData.image === "") {
+          toast.error("Please select an image.");
+          return;
+        }
+        response = await fetch(
+          `http://localhost:8081/admin/vehicle/${vehicleId}`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(vehicleData),
+          }
+        );
+      } else {
+        response = await fetch("http://localhost:8081/createVehicle", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(vehicleData),
+        });
+      }
+
+      data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process request");
+      }
+
+      toast.success(
+        vehicleId
+          ? "Vehicle updated successfully"
+          : "Vehicle added successfully",
+        { position: "top-right" }
       );
+
+      // Reset form fields
+      setBrand("");
+      setModel("");
+      setPrice("");
+      setType("");
+      setPower("");
+      setFuel("");
+      setDescription("");
+      setfile(null);
+      setVehicleId("");
+      setUpdateButton(false);
+      setshowButton(false);
+      window.location.reload();
     } catch (error) {
-      console.error(error);
+      console.error("Error:", error.message);
+      alert(error.message);
     }
   }
+
+  // Delete a vehicle
+  async function handleRemove() {
+    try {
+      const response = await fetch(
+        `http://localhost:8081/Vehicle/${selectedVehicleId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to remove vehicle");
+      }
+
+      setVehicle((prevVehicleList) =>
+        prevVehicleList.filter((vehicle) => vehicle._id !== selectedVehicleId)
+      );
+
+      toast.success("Vehicle removed successfully", { position: "top-right" });
+      setShowRemoveModal(false);
+      setSelectedVehicleId(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error removing vehicle", { position: "top-right" });
+    }
+  }
+
+  // Get current vehicles for the current page
+  const indexOfLastVehicle = currentPage * vehiclesPerPage;
+  const indexOfFirstVehicle = indexOfLastVehicle - vehiclesPerPage;
+  const currentVehicles = vehicle.slice(
+    indexOfFirstVehicle,
+    indexOfLastVehicle
+  );
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   return (
-    <div>
+    <div className="min-h-[calc(100vh-320px)]">
       <AdminNav />
       <div className="V-heading">
         <button
@@ -164,7 +211,7 @@ const AdminVehicle = () => {
         </button>
       </div>
       {showButton ? (
-        <main className="border border-black  rounded-lg p-3 max-w-4xl mx-auto my-10">
+        <main className="border border-black rounded-lg p-3 max-w-4xl mx-auto my-10">
           <h1 className="text-3xl font-semibold text-center my-9">
             Vehicle Listing
           </h1>
@@ -211,6 +258,7 @@ const AdminVehicle = () => {
                     type="radio"
                     value="petrol"
                     onChange={(e) => setFuel(e.target.value)}
+                    checked={fuel === "petrol"}
                   />
                   Petrol
                 </label>
@@ -221,6 +269,7 @@ const AdminVehicle = () => {
                     type="radio"
                     value="diesel"
                     onChange={(e) => setFuel(e.target.value)}
+                    checked={fuel === "diesel"}
                   />
                   Diesel
                 </label>
@@ -231,6 +280,7 @@ const AdminVehicle = () => {
                     type="radio"
                     value="electric"
                     onChange={(e) => setFuel(e.target.value)}
+                    checked={fuel === "electric"}
                   />
                   Electric
                 </label>
@@ -245,6 +295,7 @@ const AdminVehicle = () => {
                     type="radio"
                     value="suv"
                     onChange={(e) => setType(e.target.value)}
+                    checked={type === "suv"}
                   />
                   SUV
                 </label>
@@ -255,6 +306,7 @@ const AdminVehicle = () => {
                     type="radio"
                     value="sedan"
                     onChange={(e) => setType(e.target.value)}
+                    checked={type === "sedan"}
                   />
                   Sedan
                 </label>
@@ -265,10 +317,12 @@ const AdminVehicle = () => {
                     type="radio"
                     value="hatchback"
                     onChange={(e) => setType(e.target.value)}
+                    checked={type === "hatchback"}
                   />
                   Hatchback
                 </label>
               </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -282,7 +336,7 @@ const AdminVehicle = () => {
                 />
                 <div>
                   <p className="text-l font-semibold">Price</p>
-                  <span className="text-xs font-semibold">($ / Day)</span>
+                  <span className="text-xs font-semibold">(Rs. / Day)</span>
                 </div>
               </div>
             </div>
@@ -322,11 +376,14 @@ const AdminVehicle = () => {
       )}
 
       <div className="v-main">
-        {vehicle?.length > 0 ? (
-          vehicle.map((x) => (
-            <div className="v-inner">
+        {currentVehicles?.length > 0 ? (
+          currentVehicles.map((x) => (
+            <div className="v-inner" key={x._id}>
               <div className="v-first">
-                <img src={x.image} alt={x.brand} />
+                <img
+                  src={`http://localhost:8081/uploads/${x.image}`}
+                  alt={x.brand}
+                />
                 <div className="text-center my-6">
                   <a
                     onClick={() => {
@@ -339,10 +396,13 @@ const AdminVehicle = () => {
                     UPDATE
                   </a>
                   <a
-                    onClick={() => remove(x._id)}
-                    className="bg-red-500 cursor-pointer ml-2 text-white border-2 border-white hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl "
+                    onClick={() => {
+                      setSelectedVehicleId(x._id);
+                      setShowRemoveModal(true);
+                    }}
+                    className="bg-red-500 cursor-pointer text-white border-2 border-white hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl"
                   >
-                    DELETE
+                    REMOVE
                   </a>
                 </div>
               </div>
@@ -376,11 +436,80 @@ const AdminVehicle = () => {
             </div>
           ))
         ) : (
-          <p className="w-full font-bold text-black text-center col-span-2">
-            No Vehicles Available
-          </p>
+          <h1 className="text-4xl font-semibold text-center">
+            No vehicles available
+          </h1>
         )}
       </div>
+
+      <div className="pagination flex justify-center items-center gap-2 my-5">
+        <button
+          onClick={() => currentPage > 1 && paginate(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${
+            currentPage === 1
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-indigo-500 text-white hover:bg-indigo-600"
+          }`}
+        >
+          <HiChevronLeft size={20} />
+        </button>
+
+        {Array.from(
+          { length: Math.ceil(vehicle.length / vehiclesPerPage) },
+          (_, i) => (
+            <button
+              key={i}
+              onClick={() => paginate(i + 1)}
+              className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${
+                currentPage === i + 1
+                  ? "bg-indigo-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {i + 1}
+            </button>
+          )
+        )}
+
+        <button
+          onClick={() =>
+            currentPage < Math.ceil(vehicle.length / vehiclesPerPage) &&
+            paginate(currentPage + 1)
+          }
+          disabled={currentPage === Math.ceil(vehicle.length / vehiclesPerPage)}
+          className={`w-10 h-10 flex items-center justify-center rounded-full border transition ${
+            currentPage === Math.ceil(vehicle.length / vehiclesPerPage)
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-indigo-500 text-white hover:bg-indigo-600"
+          }`}
+        >
+          <HiChevronRight size={20} />
+        </button>
+      </div>
+
+      {showRemoveModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-5 rounded-lg shadow-lg w-96">
+            <h2 className="text-lg font-bold mb-3">Confirm Removal</h2>
+            <p>Are you sure you want to remove this vehicle?</p>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowRemoveModal(false)}
+                className="mr-3 px-4 py-2 bg-gray-300 text-black rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRemove}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
