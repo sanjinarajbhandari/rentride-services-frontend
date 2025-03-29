@@ -1,11 +1,4 @@
 import React, { useEffect, useState } from "react";
-import {
-  getStorage,
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-} from "firebase/storage";
-import { app } from "../../firebase";
 import { useDispatch, useSelector } from "react-redux";
 import Khalti from "../Khalti/Khalti";
 import { paymentReset } from "../../redux/user/paymentSlice";
@@ -17,8 +10,7 @@ import {
 } from "../../redux/user/reservationSlice";
 
 export default function Booking({ price, model, onClose, id }) {
-  const { user, loading, error } = useSelector((state) => state.user);
-  console.log(user, "vlaue");
+  const { user } = useSelector((state) => state.user);
   const { reservationStatus } = useSelector((state) => state.reservation);
   const { paymentStatus } = useSelector((state) => state.payment);
 
@@ -29,50 +21,26 @@ export default function Booking({ price, model, onClose, id }) {
   const [contact, setContact] = useState("");
   const [checkOutDate, setCheckOutDate] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile] = useState("");
+  const [, setFile] = useState(""); // Image file state, can be used for server-side upload
   const [showPopup, setShowPopup] = useState(true);
   const [khalti, setKhalti] = useState(false);
-  const storage = getStorage(app);
 
   const handleKhalti = (e) => {
     e.preventDefault();
-    console.log("hoooooooooooooooo");
-    const storageRef = ref(storage, `reservationImage/${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const userData = {
+      email: user?.rest.email,
+      userName,
+      contact,
+      checkOutDate,
+      price,
+      description,
+      model,
+      image: "",
+      vehicleId: id,
+    };
 
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress =
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        console.log(`Upload is ${progress}% done`);
-      },
-      (error) => {
-        console.log("Error uploading image :", error);
-      },
-
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        console.log(downloadURL);
-        const userData = {
-          email: user?.rest.email,
-          userName,
-          contact,
-          checkOutDate,
-          price,
-          description,
-          model,
-          image: downloadURL,
-          vehicleId: id,
-        };
-        console.log(userData);
-        dispatch(reservationStart());
-        dispatch(reservationSuccess(userData));
-        console.log(reservationStatus, "rese");
-      }
-    );
-    console.log("dhelllooohh");
-
+    dispatch(reservationStart());
+    dispatch(reservationSuccess(userData));
     setKhalti(true);
   };
 
@@ -106,7 +74,7 @@ export default function Booking({ price, model, onClose, id }) {
 
       onClose();
     } catch (error) {
-      console.error("Error adding vechicle Booking", error);
+      console.error("Error adding vehicle booking", error);
     }
   };
 
@@ -118,8 +86,8 @@ export default function Booking({ price, model, onClose, id }) {
   return (
     <>
       {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-8 rounded-lg max-w-4xl relative">
+        <div className="fixed z-[999999999999999999] inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-8 rounded-lg w-full max-w-4xl relative">
             <button
               className="absolute top-0 right-0 px-4 py-2 text-gray-500 hover:text-gray-700 focus:outline-none"
               onClick={handleClose}
@@ -130,7 +98,7 @@ export default function Booking({ price, model, onClose, id }) {
               Vehicle Booking
             </h1>
             <p className="text-l font-semibold">Model: {model}</p>
-            <p className="text-l font-semibold">Price: ${price}</p>
+            <p className="text-l font-semibold">Price: Rs.{price}</p>
             <br />
             <form className="flex flex-col sm:flex-row gap-4">
               <div className="flex flex-col gap-4 flex-1">
@@ -156,7 +124,6 @@ export default function Booking({ price, model, onClose, id }) {
                 <input
                   type="date"
                   className="border p-3 rounded-lg "
-                  // min={new Date().toISOString().split("T")[0]}
                   maxLength="3"
                   value={checkOutDate}
                   onChange={(e) => setCheckOutDate(e.target.value)}
@@ -173,13 +140,13 @@ export default function Booking({ price, model, onClose, id }) {
                   required
                 />
 
-                <input
+                {/* Optional image upload, handle on server if needed */}
+                {/* <input
                   type="file"
                   accept="image/*"
                   className="border p-3 rounded-lg "
                   onChange={(e) => setFile(e.target.files[0])}
-                  required
-                />
+                /> */}
 
                 <button
                   onClick={handleKhalti}
