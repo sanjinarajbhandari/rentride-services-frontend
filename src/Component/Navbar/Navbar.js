@@ -31,10 +31,8 @@ const Navbar = () => {
 
   const handleSubmit = () => {
     if (searchStatus === "") {
-      console.log("nul");
     } else {
-      console.log("not nul");
-      navigate("/search");
+      navigate("/search?searchTerm=" + searchTerm);
     }
   };
   return (
