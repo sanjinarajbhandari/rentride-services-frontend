@@ -60,9 +60,7 @@ export default function Booking({ price, model, onClose, id }) {
       });
       dispatch(reservationReset());
       dispatch(paymentReset());
-      setTimeout(function () {
-        navigate("/Vehicle");
-      }, 3000);
+      navigate("/Vehicle");
 
       // Reset all states after successful form submission
       setUserName("");
@@ -104,7 +102,7 @@ export default function Booking({ price, model, onClose, id }) {
               <div className="flex flex-col gap-4 flex-1">
                 <input
                   type="text"
-                  placeholder="Username"
+                  placeholder="Your Name"
                   className="border p-3 rounded-lg"
                   maxLength="62"
                   value={userName}

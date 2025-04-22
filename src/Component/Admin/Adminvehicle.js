@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AdminNav from "./AdminNav";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "./Admin_Vehicle.css";
 import { HiChevronLeft, HiChevronRight } from "react-icons/hi";
+import "ol/ol.css";
+import Map from "ol/Map";
+import View from "ol/View";
+import TileLayer from "ol/layer/Tile";
+import OSM from "ol/source/OSM";
+import { fromLonLat, toLonLat } from "ol/proj";
+import { defaults as defaultControls } from "ol/control";
+import { useSelector } from "react-redux";
 
 const AdminVehicle = () => {
+  const { user } = useSelector((state) => state.user);
   const navigate = useNavigate();
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -24,6 +33,73 @@ const AdminVehicle = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const vehiclesPerPage = 6;
+
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [locationSelected, setLocationSelected] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!locationSelected) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLatitude(position.coords.latitude);
+            setLongitude(position.coords.longitude);
+            setLocationSelected(true);
+          },
+          (error) => {
+            console.warn("Location access denied:", error.message);
+            // 🗺️ Default to Kathmandu
+            setLatitude(27.7172);
+            setLongitude(85.324);
+            setLocationSelected(true);
+          }
+        );
+      } else {
+        console.warn("Geolocation not supported by this browser.");
+        setLatitude(27.7172);
+        setLongitude(85.324);
+        setLocationSelected(true);
+      }
+    }
+  }, []);
+
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (latitude === null || longitude === null || !mapRef.current) return;
+
+    const initialCoords = fromLonLat([longitude, latitude]);
+
+    const map = new Map({
+      target: mapRef.current,
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+        }),
+      ],
+      controls: defaultControls({ attribution: false }),
+      view: new View({
+        center: initialCoords,
+        zoom: 13,
+      }),
+    });
+
+    map.on("click", function (evt) {
+      const coords = toLonLat(evt.coordinate);
+      setLongitude(coords[0]);
+      setLatitude(coords[1]);
+      setLocationSelected(true);
+    });
+
+    return () => map.setTarget(null);
+  }, [latitude, longitude, showButton]); // Add showButton here!
 
   async function fetchVehicle() {
     try {
@@ -102,6 +178,8 @@ const AdminVehicle = () => {
         type,
         description,
         image: uploadedFilename,
+        latitude,
+        longitude,
       };
 
       let response;
@@ -339,6 +417,18 @@ const AdminVehicle = () => {
                   <span className="text-xs font-semibold">(Rs. / Day)</span>
                 </div>
               </div>
+
+              <p className="text-sm font-semibold mt-4">
+                Select Location on Map:
+              </p>
+              <div
+                ref={mapRef}
+                className="w-full h-64 border border-gray-400 rounded-md"
+              ></div>
+              <p className="text-sm text-gray-500">
+                Selected Location: {latitude?.toFixed(5)},{" "}
+                {longitude?.toFixed(5)}
+              </p>
             </div>
             <div className="flex flex-col flex-1 gap-4">
               <textarea
@@ -377,64 +467,71 @@ const AdminVehicle = () => {
 
       <div className="v-main">
         {currentVehicles?.length > 0 ? (
-          currentVehicles.map((x) => (
-            <div className="v-inner" key={x._id}>
-              <div className="v-first">
-                <img
-                  src={`http://localhost:8081/uploads/${x.image}`}
-                  alt={x.brand}
-                />
-                <div className="text-center my-6">
-                  <a
-                    onClick={() => {
-                      setVehicleId(x._id);
-                      setshowButton(true);
-                      setUpdateButton(true);
-                    }}
-                    className=" bg-slate-800 cursor-pointer text-white border-2 border-white mr-2  hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl"
-                  >
-                    UPDATE
-                  </a>
-                  <a
-                    onClick={() => {
-                      setSelectedVehicleId(x._id);
-                      setShowRemoveModal(true);
-                    }}
-                    className="bg-red-500 cursor-pointer text-white border-2 border-white hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl"
-                  >
-                    REMOVE
-                  </a>
-                </div>
-              </div>
-              <div className="v-second">
-                <h3 className="text-xl font-bold text-center">{x.model}</h3>
-                <br />
+          currentVehicles.map(
+            (x) =>
+              x.userId === user.rest._id && (
+                <>
+                  <div className="v-inner" key={x._id}>
+                    <div className="v-first">
+                      <img
+                        src={`http://localhost:8081/uploads/${x.image}`}
+                        alt={x.brand}
+                      />
+                      <div className="text-center my-6">
+                        <a
+                          onClick={() => {
+                            setVehicleId(x._id);
+                            setshowButton(true);
+                            setUpdateButton(true);
+                          }}
+                          className=" bg-slate-800 cursor-pointer text-white border-2 border-white mr-2  hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl"
+                        >
+                          UPDATE
+                        </a>
+                        <a
+                          onClick={() => {
+                            setSelectedVehicleId(x._id);
+                            setShowRemoveModal(true);
+                          }}
+                          className="bg-red-500 cursor-pointer text-white border-2 border-white hover:bg-white hover:text-black hover:border-black font-bold py-1 px-2 rounded-xl"
+                        >
+                          REMOVE
+                        </a>
+                      </div>
+                    </div>
+                    <div className="v-second">
+                      <h3 className="text-xl font-bold text-center">
+                        {x.model}
+                      </h3>
+                      <br />
 
-                <p>
-                  <b>Brand: </b>
-                  {x.brand}
-                </p>
+                      <p>
+                        <b>Brand: </b>
+                        {x.brand}
+                      </p>
 
-                <p>
-                  <b>Type: </b> {x.type}
-                </p>
+                      <p>
+                        <b>Type: </b> {x.type}
+                      </p>
 
-                <p>
-                  <b>Power: </b> {x.power}
-                </p>
+                      <p>
+                        <b>Power: </b> {x.power}
+                      </p>
 
-                <p>
-                  <b>Fuel: </b> {x.Fuel}
-                </p>
-                <p>
-                  <b>Price/Per day: </b> {x.price}
-                </p>
-                <p>
-                  <b>Description: </b> {x.description}
-                </p>
-              </div>
-            </div>
-          ))
+                      <p>
+                        <b>Fuel: </b> {x.Fuel}
+                      </p>
+                      <p>
+                        <b>Price/Per day: </b> {x.price}
+                      </p>
+                      <p>
+                        <b>Description: </b> {x.description}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )
+          )
         ) : (
           <h1 className="text-4xl font-semibold text-center">
             No vehicles available

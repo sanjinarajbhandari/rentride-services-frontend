@@ -25,8 +25,14 @@ const Khalti = ({ amounto, purpose }) => {
         });
 
         if (response) {
+
           const responseData = await response.json();
+          console.log(" this code searrching....... ", responseData);
+          // return;
           window.location.href = `${responseData?.payment_url}`;
+
+
+
         }
       } catch (error) {
         console.error(error);
