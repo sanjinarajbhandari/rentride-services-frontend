@@ -9,7 +9,10 @@ import {
   reservationSuccess,
 } from "../../redux/user/reservationSlice";
 
-export default function Booking({ price, model, onClose, id }) {
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
+export default function Booking({ price, model, onClose, id, bookedDates = [] }) {
   const { user } = useSelector((state) => state.user);
   const { reservationStatus } = useSelector((state) => state.reservation);
   const { paymentStatus } = useSelector((state) => state.payment);
@@ -19,7 +22,7 @@ export default function Booking({ price, model, onClose, id }) {
 
   const [userName, setUserName] = useState("");
   const [contact, setContact] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
+  const [checkOutDate, setCheckOutDate] = useState(null);
   const [description, setDescription] = useState("");
   const [, setFile] = useState(""); // Image file state, can be used for server-side upload
   const [showPopup, setShowPopup] = useState(true);
@@ -107,6 +110,7 @@ export default function Booking({ price, model, onClose, id }) {
                   maxLength="62"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
+                  pattern="^[A-Za-z\s]+$" 
                   required
                 />
 
@@ -118,13 +122,20 @@ export default function Booking({ price, model, onClose, id }) {
                   onChange={(e) => setContact(e.target.value)}
                   required
                 />
+                
                 <label>Check Out:</label>
-                <input
-                  type="date"
-                  className="border p-3 rounded-lg "
-                  maxLength="3"
-                  value={checkOutDate}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
+                <DatePicker
+                  selected={checkOutDate}
+                  onChange={(date) => setCheckOutDate(date)}
+                  minDate={new Date()}
+                  filterDate={(date) =>
+                    !bookedDates.some(
+                      (booked) =>
+                        new Date(booked).toDateString() === date.toDateString()
+                    )
+                  }
+                  className="border p-3 rounded-lg w-full"
+                  placeholderText="Select a date"
                   required
                 />
               </div>

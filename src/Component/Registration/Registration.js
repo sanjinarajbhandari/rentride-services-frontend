@@ -64,13 +64,27 @@ function Registration() {
   }, [latitude, longitude]);
 
   async function handleSubmit(e) {
+    const namePattern = /^[A-Za-z\s]+$/;
     e.preventDefault();
-
-    if (!latitude || !longitude) {
-      toast.error("Location not selected");
+    if (!latitude || !longitude || !name || !email || !password || !confirmPassword) {
+      toast.error("Please fill all fields");
       return;
     }
-
+   
+ 
+      if (!namePattern.test(name)) {
+        toast.error("Name must contain only letters and spaces");
+        return;
+      }
+      console.log("Latitude:", latitude);
+      console.log("Longitude:", longitude);     
+      console.log("Name:", name);
+      console.log("Email:", email); 
+      console.log("Password:", password);
+      console.log("Confirm Password:", confirmPassword);
+    
+    
+    // return;
     const userData = {
       name,
       email,
@@ -88,6 +102,8 @@ function Registration() {
       });
 
       const data = await response.json();
+  
+      console.log("Response data:", data); // Log the response data
       toast.success("Registration Successful");
       setMessage(data.message);
       if (response.ok) navigate("/");
